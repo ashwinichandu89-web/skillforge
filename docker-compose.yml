@@ -1,0 +1,32 @@
+# Local full stack: PostgreSQL + API + web (nginx). Open http://localhost:8080
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: skillforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: skillforge
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillforge"]
+      interval: 5s
+      retries: 10
+  backend:
+    build: ./backend
+    environment:
+      ENV: ${ENV:-development}
+      DATABASE_URL: postgresql+psycopg2://skillforge:${POSTGRES_PASSWORD}@db:5432/skillforge
+      JWT_SECRET: ${JWT_SECRET:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      S3_BUCKET: ${S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TRUST_PROXY: "1"
+    depends_on:
+      db: { condition: service_healthy }
+  web:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on: [backend]
+volumes:
+  pgdata:
